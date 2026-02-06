@@ -1,14 +1,13 @@
 openapi: 3.0.0
 info:
   title: Jira Analytics API
-  description: Node.js server for analyzing Jira issues, workflows, and time metrics.
-  version: 1.0.0
+  description: Node.js server for analyzing Jira issues. Updated for Jira Cloud JQL Search API (v3).
+  version: 1.1.0
 
 servers:
   - url: http://localhost:3000
     description: Local Development Server
 
-# Reusable header parameters
 components:
   parameters:
     JiraUrl:
@@ -16,49 +15,38 @@ components:
       name: x-jira-url
       schema:
         type: string
-        example: "https://your-domain.atlassian.net"
       required: true
-      description: The base URL of the Jira instance.
     JiraEmail:
       in: header
       name: x-jira-email
       schema:
         type: string
         format: email
-        example: "user@example.com"
       required: true
-      description: The email address associated with the Jira account.
     JiraApiKey:
       in: header
       name: x-jira-api-key
       schema:
         type: string
       required: true
-      description: The Atlassian API Token.
 
 paths:
   /api/projects:
     get:
       operationId: listProjects
       summary: List all Jira projects
-      description: Fetches a list of all projects visible to the user.
       parameters:
         - $ref: '#/components/parameters/JiraUrl'
         - $ref: '#/components/parameters/JiraEmail'
         - $ref: '#/components/parameters/JiraApiKey'
       responses:
         '200':
-          description: List of projects retrieved successfully.
-        '400':
-          description: Missing headers.
-        '500':
-          description: Jira API error.
+          description: Success
 
   /api/data-understanding:
     get:
       operationId: getDataUnderstanding
-      summary: Get issue statistics and data quality metrics
-      description: Aggregates total issues, groups by type/status/assignee, and flags missing fields.
+      summary: Get issue statistics
       parameters:
         - $ref: '#/components/parameters/JiraUrl'
         - $ref: '#/components/parameters/JiraEmail'
@@ -68,12 +56,11 @@ paths:
           schema:
             type: string
           required: true
-          description: The Jira Project Key (e.g., WEB, PROJ).
-        - name: startAt
+        - name: nextPageToken
           in: query
+          description: Token for the next page of results (from previous response).
           schema:
-            type: integer
-            default: 0
+            type: string
         - name: maxResults
           in: query
           schema:
@@ -81,13 +68,12 @@ paths:
             default: 50
       responses:
         '200':
-          description: Aggregated data metrics returned.
+          description: Returns stats and a nextPageToken if more data exists.
 
   /api/time-analysis:
     get:
       operationId: getTimeAnalysis
       summary: Analyze issue aging and spikes
-      description: Calculates average age, time to resolve, and identifies stalled issues.
       parameters:
         - $ref: '#/components/parameters/JiraUrl'
         - $ref: '#/components/parameters/JiraEmail'
@@ -97,11 +83,10 @@ paths:
           required: true
           schema: 
             type: string
-        - name: startAt
+        - name: nextPageToken
           in: query
           schema: 
-            type: integer
-            default: 0
+            type: string
         - name: maxResults
           in: query
           schema: 
@@ -112,8 +97,6 @@ paths:
           schema:
             type: integer
             default: 14
-          required: false
-          description: Number of days without update to consider an issue "stalled".
       responses:
         '200':
           description: Time-based statistics returned.
@@ -122,7 +105,6 @@ paths:
     get:
       operationId: getWorkflowAnalysis
       summary: Analyze transitions and bottlenecks
-      description: Parses issue changelogs to determine time spent in status and reopen patterns.
       parameters:
         - $ref: '#/components/parameters/JiraUrl'
         - $ref: '#/components/parameters/JiraEmail'
@@ -132,11 +114,10 @@ paths:
           required: true
           schema: 
             type: string
-        - name: startAt
+        - name: nextPageToken
           in: query
           schema: 
-            type: integer
-            default: 0
+            type: string
         - name: maxResults
           in: query
           schema: 

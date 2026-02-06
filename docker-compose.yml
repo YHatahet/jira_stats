@@ -1,8 +1,11 @@
 version: '3.8'
+
 services:
-  jira-stats:
+  jira-analytics:
     build: .
+    container_name: jira_analytics_server
     ports:
       - "3000:3000"
+    environment:
+      - PORT=3000
     restart: unless-stopped
-    container_name: jira_stats_api

@@ -1,20 +1,20 @@
-# Use lightweight Node image
-FROM node:18-alpine
+# Use official Node.js LTS (Long Term Support) alpine image for small footprint
+FROM node:20-alpine
 
-# Set working directory
-WORKDIR /app
+# Set the working directory inside the container
+WORKDIR /usr/src/app
 
-# Copy package files first (better caching)
-COPY package.json ./
+# Copy package files first to leverage Docker cache for dependencies
+COPY package*.json ./
 
-# Install dependencies
-RUN npm install --production
+# Install dependencies (only production to keep image small)
+RUN npm install --omit=dev
 
-# Copy source code
-COPY server.js .
+# Copy the rest of the application code
+COPY . .
 
-# Expose port
+# Expose the port the app runs on
 EXPOSE 3000
 
-# Start application
+# Define the command to run the app
 CMD ["node", "server.js"]

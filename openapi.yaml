@@ -1,101 +1,147 @@
 openapi: 3.0.0
 info:
-  title: Jira Sprint Stats API
-  description: API to fetch and aggregate the last N sprints' statistics from a Jira Board.
+  title: Jira Analytics API
+  description: Node.js server for analyzing Jira issues, workflows, and time metrics.
   version: 1.0.0
+
 servers:
   - url: http://localhost:3000
+    description: Local Development Server
+
+# Reusable header parameters
+components:
+  parameters:
+    JiraUrl:
+      in: header
+      name: x-jira-url
+      schema:
+        type: string
+        example: "https://your-domain.atlassian.net"
+      required: true
+      description: The base URL of the Jira instance.
+    JiraEmail:
+      in: header
+      name: x-jira-email
+      schema:
+        type: string
+        format: email
+        example: "user@example.com"
+      required: true
+      description: The email address associated with the Jira account.
+    JiraApiKey:
+      in: header
+      name: x-jira-api-key
+      schema:
+        type: string
+      required: true
+      description: The Atlassian API Token.
+
 paths:
-  /api/sprint-stats:
-    post:
-      summary: Get Sprint Dashboard Data
-      description: Fetches all sprints for a board, filters for the last N closed sprints, and calculates velocity/completion stats.
+  /api/projects:
+    get:
+      operationId: listProjects
+      summary: List all Jira projects
+      description: Fetches a list of all projects visible to the user.
       parameters:
-        - in: header
-          name: x-jira-domain
-          schema:
-            type: string
-            example: "https://your-company.atlassian.net"
-          required: true
-          description: Base URL of your Jira instance.
-        - in: header
-          name: x-jira-email
-          schema:
-            type: string
-            example: "user@example.com"
-          required: true
-          description: Your Atlassian account email.
-        - in: header
-          name: x-jira-token
-          schema:
-            type: string
-          required: true
-          description: Atlassian API Token.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - boardId
-              properties:
-                boardId:
-                  type: integer
-                  description: The ID of the Jira Board (RapidView ID).
-                  example: 5
-                sprintCount:
-                  type: integer
-                  description: Number of recent closed sprints to analyze.
-                  default: 3
-                  example: 3
-                storyPointField:
-                  type: string
-                  description: The custom field ID for Story Points.
-                  default: "customfield_10002"
-                  example: "customfield_10002"
+        - $ref: '#/components/parameters/JiraUrl'
+        - $ref: '#/components/parameters/JiraEmail'
+        - $ref: '#/components/parameters/JiraApiKey'
       responses:
         '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  meta:
-                    type: object
-                    properties:
-                      boardId: 
-                        type: integer
-                      scannedSprints:
-                        type: integer
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        sprintName:
-                          type: string
-                        sprintId:
-                          type: integer
-                        endDate:
-                          type: string
-                          format: date-time
-                        stats:
-                          type: object
-                          properties:
-                            committedPoints:
-                              type: number
-                            completedPoints:
-                              type: number
-                            completionRate:
-                              type: number
-                              description: Percentage completed (0-100)
-                            totalIssues:
-                              type: integer
-                            issuesDone:
-                              type: integer
+          description: List of projects retrieved successfully.
         '400':
-          description: Missing required parameters
+          description: Missing headers.
         '500':
-          description: Server or Jira API error
+          description: Jira API error.
+
+  /api/data-understanding:
+    get:
+      operationId: getDataUnderstanding
+      summary: Get issue statistics and data quality metrics
+      description: Aggregates total issues, groups by type/status/assignee, and flags missing fields.
+      parameters:
+        - $ref: '#/components/parameters/JiraUrl'
+        - $ref: '#/components/parameters/JiraEmail'
+        - $ref: '#/components/parameters/JiraApiKey'
+        - name: projectKey
+          in: query
+          schema:
+            type: string
+          required: true
+          description: The Jira Project Key (e.g., WEB, PROJ).
+        - name: startAt
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: maxResults
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Aggregated data metrics returned.
+
+  /api/time-analysis:
+    get:
+      operationId: getTimeAnalysis
+      summary: Analyze issue aging and spikes
+      description: Calculates average age, time to resolve, and identifies stalled issues.
+      parameters:
+        - $ref: '#/components/parameters/JiraUrl'
+        - $ref: '#/components/parameters/JiraEmail'
+        - $ref: '#/components/parameters/JiraApiKey'
+        - name: projectKey
+          in: query
+          required: true
+          schema: 
+            type: string
+        - name: startAt
+          in: query
+          schema: 
+            type: integer
+            default: 0
+        - name: maxResults
+          in: query
+          schema: 
+            type: integer
+            default: 50
+        - name: x-stalled-days
+          in: header
+          schema:
+            type: integer
+            default: 14
+          required: false
+          description: Number of days without update to consider an issue "stalled".
+      responses:
+        '200':
+          description: Time-based statistics returned.
+
+  /api/workflow-analysis:
+    get:
+      operationId: getWorkflowAnalysis
+      summary: Analyze transitions and bottlenecks
+      description: Parses issue changelogs to determine time spent in status and reopen patterns.
+      parameters:
+        - $ref: '#/components/parameters/JiraUrl'
+        - $ref: '#/components/parameters/JiraEmail'
+        - $ref: '#/components/parameters/JiraApiKey'
+        - name: projectKey
+          in: query
+          required: true
+          schema: 
+            type: string
+        - name: startAt
+          in: query
+          schema: 
+            type: integer
+            default: 0
+        - name: maxResults
+          in: query
+          schema: 
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Workflow analysis returned.

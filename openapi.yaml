@@ -1,0 +1,101 @@
+openapi: 3.0.0
+info:
+  title: Jira Sprint Stats API
+  description: API to fetch and aggregate the last N sprints' statistics from a Jira Board.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/sprint-stats:
+    post:
+      summary: Get Sprint Dashboard Data
+      description: Fetches all sprints for a board, filters for the last N closed sprints, and calculates velocity/completion stats.
+      parameters:
+        - in: header
+          name: x-jira-domain
+          schema:
+            type: string
+            example: "https://your-company.atlassian.net"
+          required: true
+          description: Base URL of your Jira instance.
+        - in: header
+          name: x-jira-email
+          schema:
+            type: string
+            example: "user@example.com"
+          required: true
+          description: Your Atlassian account email.
+        - in: header
+          name: x-jira-token
+          schema:
+            type: string
+          required: true
+          description: Atlassian API Token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - boardId
+              properties:
+                boardId:
+                  type: integer
+                  description: The ID of the Jira Board (RapidView ID).
+                  example: 5
+                sprintCount:
+                  type: integer
+                  description: Number of recent closed sprints to analyze.
+                  default: 3
+                  example: 3
+                storyPointField:
+                  type: string
+                  description: The custom field ID for Story Points.
+                  default: "customfield_10002"
+                  example: "customfield_10002"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    type: object
+                    properties:
+                      boardId: 
+                        type: integer
+                      scannedSprints:
+                        type: integer
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        sprintName:
+                          type: string
+                        sprintId:
+                          type: integer
+                        endDate:
+                          type: string
+                          format: date-time
+                        stats:
+                          type: object
+                          properties:
+                            committedPoints:
+                              type: number
+                            completedPoints:
+                              type: number
+                            completionRate:
+                              type: number
+                              description: Percentage completed (0-100)
+                            totalIssues:
+                              type: integer
+                            issuesDone:
+                              type: integer
+        '400':
+          description: Missing required parameters
+        '500':
+          description: Server or Jira API error
